@@ -1,4 +1,4 @@
-module my-message-queue
+module github.com/amitde69/my-message-queue
 
 go 1.22.5
 

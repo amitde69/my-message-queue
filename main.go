@@ -1,7 +1,7 @@
 package main
 
 import (
-	q "my-message-queue/queue"
+	q "github.com/amitde69/my-message-queue/queue"
 )
 
 func main() {
