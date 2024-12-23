@@ -5,18 +5,24 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
 
-var data map[string]Queue
+type QueueData struct {
+	Queues map[string]Queue
+	Mutex  sync.Mutex
+}
+
+var queueData QueueData
 
 type PublishMessageReq struct {
 	Message string `json:"message"`
 }
 
 func InitilizeQueue(name string) {
-	data[name] = Queue{Name: name}
+	queueData.Queues[name] = Queue{Name: name}
 	router.POST("/"+name, PublishMessage)
 	router.GET("/"+name, ConsumeMessage)
 }
@@ -31,7 +37,9 @@ func CreateQueue(context *gin.Context) {
 		})
 		return
 	}
-	if _, ok := data[newQueue.Name]; ok {
+	queueData.Mutex.Lock()
+	defer queueData.Mutex.Unlock()
+	if _, ok := queueData.Queues[newQueue.Name]; ok {
 		context.IndentedJSON(http.StatusBadRequest, gin.H{
 			"message": "Queue named " + newQueue.Name + " already exists",
 		})
@@ -58,15 +66,17 @@ func PublishMessage(context *gin.Context) {
 	path := context.Request.URL.Path
 	pathSegments := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	QueueName = pathSegments[0] // Get the first segment
-	if _, ok := data[QueueName]; !ok {
+	queueData.Mutex.Lock()
+	defer queueData.Mutex.Unlock()
+	if _, ok := queueData.Queues[QueueName]; !ok {
 		context.IndentedJSON(http.StatusNotFound, gin.H{
 			"message": "Queue named " + QueueName + " not found",
 		})
 		return
 	}
-	myq := data[QueueName]
+	myq := queueData.Queues[QueueName]
 	myq.Publish(newMessageReq.Message)
-	data[QueueName] = myq
+	queueData.Queues[QueueName] = myq
 	context.IndentedJSON(http.StatusOK, gin.H{
 		"message": "Message published to queue " + QueueName,
 	})
@@ -77,13 +87,15 @@ func ConsumeMessage(context *gin.Context) {
 	path := context.Request.URL.Path
 	pathSegments := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	QueueName = pathSegments[0] // Get the first segment
-	if _, ok := data[QueueName]; !ok {
+	queueData.Mutex.Lock()
+	defer queueData.Mutex.Unlock()
+	if _, ok := queueData.Queues[QueueName]; !ok {
 		context.IndentedJSON(http.StatusNotFound, gin.H{
 			"message": "Queue named " + QueueName + " not found",
 		})
 		return
 	}
-	myq := data[QueueName]
+	myq := queueData.Queues[QueueName]
 	consumedMessage := myq.Consume()
 	if consumedMessage.Payload == "" {
 		context.IndentedJSON(http.StatusNoContent, gin.H{
@@ -98,9 +110,11 @@ func ConsumeMessage(context *gin.Context) {
 var router *gin.Engine
 
 func RunServer() {
-	if data == nil {
-		data = map[string]Queue{}
+	queueData.Mutex.Lock()
+	if queueData.Queues == nil {
+		queueData.Queues = map[string]Queue{}
 	}
+	queueData.Mutex.Unlock()
 	gin.SetMode(gin.ReleaseMode)
 	router = gin.Default()
 	router.POST("/queue", CreateQueue)

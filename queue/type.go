@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	"sync"
 
 	"golang.org/x/exp/slices"
 )
@@ -9,6 +10,7 @@ import (
 type Queue struct {
 	Name     string
 	Messages []Message
+	Mutex    sync.Mutex
 }
 
 type Message struct {
@@ -20,6 +22,8 @@ func NewQueue(name string) *Queue {
 	return &Queue{Name: name}
 }
 func (q *Queue) Publish(m string) bool {
+	q.Mutex.Lock()
+	defer q.Mutex.Unlock()
 	q.Messages = append(q.Messages, Message{Payload: m})
 	return true
 }
@@ -52,6 +56,8 @@ func (q *Queue) ListMessages() {
 func (q *Queue) Consume() Message {
 	var firstUnacked Message
 	var firstIndex int
+	q.Mutex.Lock()
+	defer q.Mutex.Unlock()
 	if q.GetLen() < 1 {
 		return Message{}
 	}
