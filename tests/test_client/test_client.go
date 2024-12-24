@@ -28,14 +28,14 @@ func main() {
 		return
 	}
 
-	consumer := conn.Consume("test1")
+	consumer := conn.Consume("test1", true)
 	go func() {
 		for message := range consumer {
 			log.Print(message)
 		}
 	}()
 
-	consumer2 := conn.Consume("test2")
+	consumer2 := conn.Consume("test2", false)
 	for message := range consumer2 {
 		log.Print(message)
 	}

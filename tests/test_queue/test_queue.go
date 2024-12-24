@@ -10,11 +10,11 @@ func main() {
 	q.Publish("testmsg 2")
 	q.Publish("testmsg 3")
 	q.ListMessages()
-	q.Consume()
+	q.Consume(true)
 	q.ListMessages()
-	q.Consume()
+	q.Consume(true)
 	q.ListMessages()
-	q.Consume()
+	q.Consume(false)
 	q.ListMessages()
 
 }

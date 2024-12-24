@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -85,6 +86,20 @@ func PublishMessage(context *gin.Context) {
 func ConsumeMessage(context *gin.Context) {
 	var QueueName string
 	path := context.Request.URL.Path
+	header := context.GetHeader("ack")
+	var ack bool
+	if header != "" {
+		ack, _ = strconv.ParseBool(header)
+		// if err != nil {
+		// 	context.IndentedJSON(http.StatusBadRequest, gin.H{
+		// 		"message": "ack header doesnt contain a boolean value",
+		// 	})
+		// 	return
+		// }
+	} else {
+		ack = true
+	}
+
 	pathSegments := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	QueueName = pathSegments[0] // Get the first segment
 	queueData.Mutex.Lock()
@@ -96,7 +111,7 @@ func ConsumeMessage(context *gin.Context) {
 		return
 	}
 	myq := queueData.Queues[QueueName]
-	consumedMessage := myq.Consume()
+	consumedMessage := myq.Consume(ack)
 	if consumedMessage.Payload == "" {
 		context.IndentedJSON(http.StatusNoContent, gin.H{
 			"message": "No messages in queue " + QueueName,

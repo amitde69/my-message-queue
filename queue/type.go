@@ -53,7 +53,7 @@ func (q *Queue) ListMessages() {
 		}
 	}
 }
-func (q *Queue) Consume() Message {
+func (q *Queue) Consume(ack bool) Message {
 	var firstUnacked Message
 	var firstIndex int
 	q.Mutex.Lock()
@@ -68,7 +68,13 @@ func (q *Queue) Consume() Message {
 			break
 		}
 	}
-	q.Messages[firstIndex].Ack = true
+	if ack {
+		q.Messages[firstIndex].Ack = true
+	}
 
 	return firstUnacked
+}
+
+func (q *Queue) ConsumeWithDefaults() Message {
+	return q.Consume(false)
 }

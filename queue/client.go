@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -56,11 +57,13 @@ func (c *ServerConnection) Publish(q string, m string) bool {
 	return true
 }
 
-func (c *ServerConnection) Consume(q string) chan string {
+func (c *ServerConnection) Consume(q string, ack bool) chan string {
 	consumer := make(chan string)
 	go func() {
 		for {
 			req, _ := http.NewRequest("GET", c.URL+"/"+q, nil)
+			header := strconv.FormatBool(ack)
+			req.Header.Add("ack", header)
 			resp, err := client.Do(req)
 			if err != nil {
 				log.Print(err)
